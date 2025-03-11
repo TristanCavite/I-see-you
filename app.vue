@@ -23,4 +23,9 @@ useHead({
     },
   ],
 });
+
+import { useColorMode } from '#imports';
+
+const colorMode = useColorMode();
+colorMode.preference = 'light'; // Force light mode on load
 </script>
