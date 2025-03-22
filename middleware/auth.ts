@@ -1,16 +1,13 @@
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { navigateTo } from 'nuxt/app';
+export default defineNuxtRouteMiddleware(async (to, from) => {
+  const user = await getCurrentUser();
 
-export default defineNuxtRouteMiddleware((to, from) => {
-  const auth = getAuth();
+  // If user is NOT logged in and tries to access a protected page, redirect to login
+  if (!user && to.name !== 'index') {
+    return navigateTo('/');
+  }
 
-  return new Promise((resolve) => {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        resolve(true);
-      } else {
-        resolve(navigateTo('/'));
-      }
-    });
-  });
-}); 
+  // If user IS logged in and tries to access the login page, redirect to dashboard
+  if (user && to.name === 'login') {
+    return navigateTo('dashboard');
+  }
+});

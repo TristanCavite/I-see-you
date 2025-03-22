@@ -50,9 +50,7 @@ import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 
 import { useFirebaseAuth } from "vuefire";
 import { useRouter } from "vue-router";
 
-definePageMeta({
-  middleware: 'guest',
-});
+
 
 useSeoMeta({
   title: "Log in",
@@ -62,6 +60,8 @@ useSeoMeta({
 
 const auth = useFirebaseAuth();
 const router = useRouter();
+
+
 
 
 const LoginSchema = object({

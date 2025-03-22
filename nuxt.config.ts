@@ -40,6 +40,7 @@ export default defineNuxtConfig({
   },
 
   vuefire: {
+    ssr: false, 
     auth: {
       enabled: true,
     },  

@@ -5,6 +5,24 @@
 </template>
 
 <script setup lang="ts">
+
+import { useColorMode } from '#imports';
+
+import { useCurrentUser } from 'vuefire';
+import { useRouter } from 'vue-router';
+
+const user = useCurrentUser();
+const router = useRouter();
+
+// Redirect user to the login page if they are logged out (handles logout event)
+watch(user, (newUser, oldUser) => {
+  if (oldUser && !newUser) {
+    router.replace('/');
+  }
+});
+
+
+
 useHead({
   title: "I see you",
   link: [
@@ -24,7 +42,7 @@ useHead({
   ],
 });
 
-import { useColorMode } from '#imports';
+
 
 const colorMode = useColorMode();
 colorMode.preference = 'light'; // Force light mode on load

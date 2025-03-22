@@ -1,8 +1,9 @@
 <template>
   <div class="flex h-screen items-center justify-center bg-[url('/bg.jpg')] bg-cover">
     <div
-      class="w-full max-w-[400px] border border-border/60 bg-card px-8 py-5 shadow-sm dark:border-border min-[480px]:rounded-lg"
+      class="w-full max-w-[400px] border border-border/60 bg-card px-8 py-5 shadow-sm dark:border-border min-[480px]:rounded-lg relative top-[-5vh] "
     >
+    <div class="overflow-y-auto max-h-[70vh] px-2">
       <h1 class="text-2xl font-bold tracking-tight lg:text-3xl">Create an account</h1>
       <p class="mt-1 text-muted-foreground">
         Sign up with your email and password or continue with Google.
@@ -66,7 +67,7 @@
         </UiButton>
       </div>
 
-      <p class="mt-8 text-sm text-muted-foreground">
+      <p class="mt-8 text-sm text-muted-foreground text-center">
         Already have an account?
         <NuxtLink class="font-semibold text-primary underline-offset-2 hover:underline" to="/"
           >Log in</NuxtLink
@@ -74,115 +75,141 @@
       </p>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-  import {
-    createUserWithEmailAndPassword,
-    GoogleAuthProvider,
-    signInWithPopup,
-    updateProfile,
-  } from "firebase/auth";
-  import { doc, setDoc } from "firebase/firestore";
-  import { useRouter } from "vue-router";
-  import { useFirebaseAuth, useFirestore } from "vuefire";
-  import { object, string, ref as yupRef } from "yup";
-  import type { InferType } from "yup";
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  updateProfile
+} from "firebase/auth";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { useRouter } from "vue-router";
+import { useFirebaseAuth } from "vuefire";
+import { object, string, ref as yupRef } from "yup";
+import type { InferType } from "yup";
 
-  useSeoMeta({
-    title: "Sign up",
-    description: "Create an account with your email and password or continue with Google.",
-  });
+useSeoMeta({
+  title: "Sign up",
+  description: "Create an account with your email and password or continue with Google.",
+});
 
-  
-  const auth = useFirebaseAuth();
-  const db = useFirestore();
-  const router = useRouter();
+// ✅ Initialize Firebase
+const auth = useFirebaseAuth();
+const db = getFirestore();
+const router = useRouter();
 
- 
-  const SignupSchema = object({
-    firstName: string().required().label("First Name"),
-    lastName: string().required().label("Last Name"),
-    email: string().email().required().label("Email"),
-    password: string().required().min(6).label("Password"),
-    confirmPassword: string()
-      .oneOf([yupRef("password")], "Passwords must match")
-      .required()
-      .label("Confirm Password"),
-  });
+// ✅ Signup Validation Schema
+const SignupSchema = object({
+  firstName: string().required().label("First Name"),
+  lastName: string().required().label("Last Name"),
+  email: string().email().required().label("Email"),
+  password: string().required().min(6).label("Password"),
+  confirmPassword: string().oneOf([yupRef("password")], "Passwords must match").required()
+});
 
-  const { handleSubmit, isSubmitting } = useForm<InferType<typeof SignupSchema>>({
-    validationSchema: SignupSchema,
-  });
+// ✅ Form Handling
+const { handleSubmit, isSubmitting } = useForm<InferType<typeof SignupSchema>>({
+  validationSchema: SignupSchema,
+});
 
+// ✅ Reactive Form Fields
+const firstName = ref("");
+const lastName = ref("");
+const email = ref("");
+const password = ref("");
+const confirmPassword = ref("");
+const errorMessage = ref("");
 
-  const firstName = ref("");
-  const lastName = ref("");
-  const email = ref("");
-  const password = ref("");
-  const confirmPassword = ref("");
-  const errorMessage = ref("");
+// ✅ Sign-up with Email & Password
+const submit = handleSubmit(async () => {
+  errorMessage.value = ""; // Clear previous errors
+  if (!auth || !db) {
+    errorMessage.value = "Firebase is not initialized.";
+    return;
+  }
 
+  try {
+    // ✅ Create user with email and password
+    const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value);
+    const user = userCredential.user;
 
-  const submit = handleSubmit(async () => {
-    if (!auth || !db) return;
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email.value,
-        password.value
-      );
-      const user = userCredential.user;
-
-      
-      await updateProfile(user, {
-        displayName: `${firstName.value} ${lastName.value}`,
-      });
-
-     
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        firstName: firstName.value,
-        lastName: lastName.value,
-        email: email.value,
-        createdAt: new Date(),
-      });
-
-      useSonner("Account created successfully!", {
-        description: "Redirecting to the dashboard...",
-      });
-      router.push("/");
-    } catch (error) {
-      errorMessage.value = "Error signing up. Please try again.";
+    if (!user.uid) {
+      errorMessage.value = "User authentication failed.";
+      return;
     }
-  });
 
+    // ✅ Update Firebase Auth profile
+    await updateProfile(user, {
+      displayName: `${firstName.value} ${lastName.value}`,
+    });
 
-  const signUpWithGoogle = async () => {
-    if (!auth || !db) return;
-    try {
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.user;
+    // ✅ Save user info to Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      firstName: firstName.value,
+      lastName: lastName.value,
+      email: email.value,
+      createdAt: new Date(),
+    });
 
-     
-      const fullName = user.displayName?.split(" ") || [];
-      const firstName = fullName[0] || "";
-      const lastName = fullName.length > 1 ? fullName.slice(1).join(" ") : "";
+    // ✅ Show success message and redirect
+    useSonner("Account created successfully!", { description: "Redirecting to the dashboard..." });
+    router.push("/dashboard");
+  } catch (error: any) {
+    errorMessage.value = error.message || "Error signing up. Please try again.";
+  }
+});
 
-    
-      await setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        firstName,
-        lastName,
-        email: user.email,
-        createdAt: new Date(),
-      });
+// ✅ Sign-up with Google
+const signUpWithGoogle = async () => {
+  errorMessage.value = ""; // Clear previous errors
 
-      useSonner("Signed up successfully!", { description: "Redirecting to the dashboard..." });
-      router.push("/admin/dashboard");
-    } catch (error) {
-      errorMessage.value = "Google sign-up failed. Please try again.";
+  if (!auth || !db) {
+    errorMessage.value = "Firebase is not initialized.";
+    return;
+  }
+
+  try {
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    const user = userCredential.user;
+
+    if (!user.uid) {
+      errorMessage.value = "Google authentication failed.";
+      return;
     }
-  };
+
+    const fullName = user.displayName?.split(" ") || [];
+    const firstName = fullName[0] || "";
+    const lastName = fullName.length > 1 ? fullName.slice(1).join(" ") : "";
+
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      firstName,
+      lastName,
+      email: user.email,
+      createdAt: new Date(),
+    });
+
+    useSonner("Signed up successfully!", { description: "Redirecting to the dashboard..." });
+    router.push("/dashboard");
+  } catch (error: any) {
+    errorMessage.value = error.message || "Google sign-up failed. Please try again.";
+  }
+};
 </script>
+
+<style>
+  .overflow-y-auto {
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar for IE & Edge */
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome, Safari */
+}
+
+</style>
