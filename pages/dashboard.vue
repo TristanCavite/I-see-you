@@ -113,6 +113,10 @@ const newPerson = ref({
   year: ''
 });
 
+definePageMeta({
+  colorMode: 'light'
+})
+
 // Function to add a new person
 const addPerson = async (data) => {
   if (!user.value) return;

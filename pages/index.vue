@@ -58,6 +58,11 @@ useSeoMeta({
 });
 
 
+definePageMeta({
+  colorMode: "light",
+})
+
+
 const auth = useFirebaseAuth();
 const router = useRouter();
 

@@ -96,6 +96,10 @@ useSeoMeta({
   description: "Create an account with your email and password or continue with Google.",
 });
 
+definePageMeta({
+  colorMode: "light",
+});
+
 // ✅ Initialize Firebase
 const auth = useFirebaseAuth();
 const db = getFirestore();
